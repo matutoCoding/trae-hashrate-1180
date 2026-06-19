@@ -1,0 +1,131 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  display: flex;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  position: relative;
+
+  &:active {
+    opacity: 0.9;
+    transition: opacity $transition-base;
+  }
+
+  &.selected {
+    border: 2rpx solid $color-primary;
+
+    .leftSection {
+      background: linear-gradient(135deg, $color-primary 0%, $color-secondary 100%);
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+
+    .leftSection {
+      background: $color-text-disabled;
+    }
+  }
+}
+
+.leftSection {
+  width: 200rpx;
+  padding: $spacing-lg 0;
+  background: linear-gradient(135deg, $color-primary-light 0%, $color-primary 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.discountValue {
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+  line-height: 1;
+}
+
+.discountLabel {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: $spacing-xs;
+}
+
+.divider {
+  width: 0;
+  position: relative;
+
+  .circleTop,
+  .circleBottom {
+    width: 20rpx;
+    height: 20rpx;
+    border-radius: 50%;
+    background: $color-bg-page;
+    position: absolute;
+    left: -10rpx;
+  }
+
+  .circleTop {
+    top: -10rpx;
+  }
+
+  .circleBottom {
+    bottom: -10rpx;
+  }
+}
+
+.rightSection {
+  flex: 1;
+  padding: $spacing-md $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.name {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.condition {
+  font-size: $font-size-sm;
+  color: $color-discount;
+  margin-bottom: $spacing-xs;
+}
+
+.desc {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  @include text-ellipsis;
+}
+
+.limit {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+}
+
+.selectedBadge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60rpx;
+  height: 60rpx;
+  background: $color-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+
+.selectedText {
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  transform: translate(8rpx, -8rpx);
+}

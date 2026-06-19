@@ -1,0 +1,137 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+
+  &:active {
+    opacity: 0.9;
+    transition: opacity $transition-base;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.rinkName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  flex: 1;
+  margin-right: $spacing-sm;
+}
+
+.status {
+  padding: 4rpx 16rpx;
+  border-radius: $radius-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
+.statusPending {
+  background: rgba($color-warning, 0.1);
+  color: $color-warning;
+}
+
+.statusConfirmed {
+  background: rgba($color-success, 0.1);
+  color: $color-success;
+}
+
+.statusCancelled {
+  background: rgba($color-text-tertiary, 0.1);
+  color: $color-text-tertiary;
+}
+
+.statusCompleted {
+  background: rgba($color-primary, 0.1);
+  color: $color-primary;
+}
+
+.timeSection {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.dateBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-tag;
+  border-radius: $radius-md;
+  margin-right: $spacing-lg;
+}
+
+.date {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+}
+
+.weekday {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  margin-top: 4rpx;
+}
+
+.timeBox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.time {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.skateTag {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: $spacing-xs;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.skater {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.price {
+  display: flex;
+  align-items: baseline;
+}
+
+.originalPrice {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-decoration: line-through;
+  margin-right: $spacing-sm;
+}
+
+.finalPrice {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}

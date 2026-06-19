@@ -1,0 +1,91 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  padding: $spacing-lg 0;
+}
+
+.title {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.slotList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+}
+
+.slotItem {
+  width: calc(50% - #{$spacing-md} / 2);
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-md;
+  box-sizing: border-box;
+  transition: all $transition-base;
+
+  &.selected {
+    border-color: $color-primary;
+    background: rgba($color-primary, 0.05);
+  }
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.slotTime {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: $spacing-sm;
+}
+
+.startTime,
+.endTime {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.dash {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin: 0 $spacing-xs;
+}
+
+.slotInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.typeTag {
+  padding: 2rpx 12rpx;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.peak {
+  background: rgba($color-discount, 0.1);
+  color: $color-discount;
+}
+
+.normal {
+  background: rgba($color-primary, 0.1);
+  color: $color-primary;
+}
+
+.offPeak {
+  background: rgba($color-success, 0.1);
+  color: $color-success;
+}
+
+.price {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-price;
+}
