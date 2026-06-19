@@ -1,23 +1,99 @@
-import React, { useMemo } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import React, { useState, useMemo } from 'react'
+import { View, Text, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import classNames from 'classnames'
 import styles from './index.module.scss'
 import { useBookingStore } from '@/store/useBookingStore'
+import { useRinkStore } from '@/store/useRinkStore'
+import { useBillStore } from '@/store/useBillStore'
 import { getDateDayName } from '@/utils/date'
+import TimeSlotPicker from '@/components/TimeSlotPicker'
+import { mockSkateSizes } from '@/data/skate'
+import type { TimeSlot } from '@/types/rink'
 
 const BookingDetailPage: React.FC = () => {
   const router = useRouter()
   const { getBookingById, updateBooking } = useBookingStore()
+  const { rinks } = useRinkStore()
+  const { updateBillByBookingId } = useBillStore()
   const bookingId = router.params.id as string
-  
+
   const booking = useMemo(() => getBookingById(bookingId), [getBookingById, bookingId])
 
-  const statusMap: Record<string, { icon: string; text: string; desc: string }> = {
-    pending: { icon: '⏳', text: '待确认', desc: '预约正在等待确认' },
-    confirmed: { icon: '✅', text: '已确认', desc: '预约已确认，请准时到场' },
-    cancelled: { icon: '❌', text: '已取消', desc: '预约已取消' },
-    completed: { icon: '🎉', text: '已完成', desc: '本次滑冰已完成' }
+  const [editing, setEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    date: '',
+    rinkId: '',
+    timeSlotId: '',
+    skaterPhone: '',
+    skateSize: '',
+    skatePrice: 0
+  })
+
+  const startEdit = () => {
+    if (!booking) return
+    setEditData({
+      date: booking.date,
+      rinkId: booking.rinkId,
+      timeSlotId: booking.timeSlotId,
+      skaterPhone: booking.skaterPhone,
+      skateSize: booking.skateRental?.size || '',
+      skatePrice: booking.skateRental?.price || 0
+    })
+    setEditing(true)
+  }
+
+  const cancelEdit = () => {
+    setEditing(false)
+  }
+
+  const saveEdit = () => {
+    if (!booking) return
+    const rink = rinks.find(r => r.id === editData.rinkId)
+    const slot = rink?.timeSlots.find(s => s.id === editData.timeSlotId)
+    if (!slot) {
+      Taro.showToast({ title: '请选择有效时段', icon: 'none' })
+      return
+    }
+    const updates: Partial<typeof booking> = {
+      date: editData.date,
+      rinkId: editData.rinkId,
+      rinkName: rink?.name || booking.rinkName,
+      timeSlotId: editData.timeSlotId,
+      timeSlotLabel: `${slot.startTime}-${slot.endTime}`,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      originalPrice: slot.price,
+      finalPrice: slot.price,
+      skaterPhone: editData.skaterPhone
+    }
+    if (editData.skateSize) {
+      const sizeInfo = mockSkateSizes.find(s => s.size === editData.skateSize)
+      updates.skateRental = {
+        size: editData.skateSize,
+        price: sizeInfo?.rentalPrice || 30
+      }
+    } else {
+      updates.skateRental = undefined
+    }
+    updateBooking(bookingId, updates)
+    const updatedBooking = { ...booking, ...updates }
+    const newSkateRentalFee = updatedBooking.skateRental?.price || 0
+    const newOriginalAmount = (updatedBooking.originalPrice || 0) + newSkateRentalFee
+    const newTotalAmount = (updatedBooking.finalPrice || 0) + newSkateRentalFee
+    updateBillByBookingId(bookingId, {
+      bookingInfo: {
+        rinkName: updatedBooking.rinkName,
+        date: updatedBooking.date,
+        timeSlotLabel: updatedBooking.timeSlotLabel,
+        skaterName: updatedBooking.skaterName
+      },
+      originalAmount: newOriginalAmount,
+      skateRentalFee: newSkateRentalFee,
+      totalAmount: Math.max(0, Number(newTotalAmount.toFixed(2)))
+    })
+    setEditing(false)
+    Taro.showToast({ title: '修改成功', icon: 'success' })
   }
 
   const handleCancel = () => {
@@ -33,12 +109,8 @@ const BookingDetailPage: React.FC = () => {
     })
   }
 
-  const handleModify = () => {
-    Taro.showToast({ title: '修改功能开发中', icon: 'none' })
-  }
-
   const handlePay = () => {
-    Taro.showToast({ title: '支付功能开发中', icon: 'none' })
+    Taro.navigateTo({ url: `/pages/bill-detail/index?bookingId=${bookingId}` })
   }
 
   if (!booking) {
@@ -49,7 +121,103 @@ const BookingDetailPage: React.FC = () => {
     )
   }
 
+  const statusMap: Record<string, { icon: string; text: string; desc: string }> = {
+    pending: { icon: '⏳', text: '待确认', desc: '预约正在等待确认' },
+    confirmed: { icon: '✅', text: '已确认', desc: '预约已确认，请准时到场' },
+    cancelled: { icon: '❌', text: '已取消', desc: '预约已取消' },
+    completed: { icon: '🎉', text: '已完成', desc: '本次滑冰已完成' }
+  }
   const status = statusMap[booking.status]
+
+  const editRink = rinks.find(r => r.id === editData.rinkId)
+
+  if (editing) {
+    return (
+      <View className={styles.page}>
+        <ScrollView scrollY>
+          <View className={styles.content}>
+            <View className={styles.infoCard}>
+              <Text className={styles.cardTitle}>修改预约</Text>
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>日期</Text>
+                <Input
+                  className={styles.formInput}
+                  type="text"
+                  placeholder="YYYY-MM-DD"
+                  value={editData.date}
+                  onInput={e => setEditData(prev => ({ ...prev, date: e.detail.value }))}
+                />
+              </View>
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>选择冰场</Text>
+                <View className={styles.rinkList}>
+                  {rinks.map(rink => (
+                    <View
+                      key={rink.id}
+                      className={classNames(styles.rinkOption, editData.rinkId === rink.id && styles.rinkOptionActive)}
+                      onClick={() => setEditData(prev => ({ ...prev, rinkId: rink.id, timeSlotId: '' }))}
+                    >
+                      <Text className={styles.rinkOptionName}>{rink.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {editRink && (
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>选择时段</Text>
+                  <TimeSlotPicker
+                    slots={editRink.timeSlots}
+                    selectedId={editData.timeSlotId}
+                    onSelect={(slot: TimeSlot) => setEditData(prev => ({ ...prev, timeSlotId: slot.id }))}
+                  />
+                </View>
+              )}
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>联系电话</Text>
+                <Input
+                  className={styles.formInput}
+                  type="text"
+                  placeholder="请输入手机号"
+                  value={editData.skaterPhone}
+                  onInput={e => setEditData(prev => ({ ...prev, skaterPhone: e.detail.value }))}
+                />
+              </View>
+
+              <View className={styles.formItem}>
+                <Text className={styles.formLabel}>冰刀租借尺码（留空则不租借）</Text>
+                <View className={styles.sizeGrid}>
+                  <View
+                    className={classNames(styles.sizeChip, editData.skateSize === '' && styles.sizeChipActive)}
+                    onClick={() => setEditData(prev => ({ ...prev, skateSize: '' }))}
+                  >
+                    不租借
+                  </View>
+                  {mockSkateSizes.map(s => (
+                    <View
+                      key={s.size}
+                      className={classNames(styles.sizeChip, editData.skateSize === s.size && styles.sizeChipActive)}
+                      onClick={() => setEditData(prev => ({ ...prev, skateSize: s.size, skatePrice: s.rentalPrice }))}
+                    >
+                      {s.size}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        <View className={styles.footer}>
+          <View className={classNames(styles.btn, styles.secondary)} onClick={cancelEdit}>取消</View>
+          <View className={classNames(styles.btn, styles.primary)} onClick={saveEdit}>保存</View>
+        </View>
+      </View>
+    )
+  }
 
   return (
     <View className={styles.page}>
@@ -136,7 +304,7 @@ const BookingDetailPage: React.FC = () => {
             <View className={classNames(styles.btn, styles.danger)} onClick={handleCancel}>
               取消预约
             </View>
-            <View className={classNames(styles.btn, styles.primary)} onClick={handleModify}>
+            <View className={classNames(styles.btn, styles.primary)} onClick={startEdit}>
               修改预约
             </View>
           </>

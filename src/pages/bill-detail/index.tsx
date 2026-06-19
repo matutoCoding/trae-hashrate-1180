@@ -4,14 +4,23 @@ import Taro, { useRouter } from '@tarojs/taro'
 import classNames from 'classnames'
 import styles from './index.module.scss'
 import { useBillStore } from '@/store/useBillStore'
+import { useBookingStore } from '@/store/useBookingStore'
 import { formatDateTime } from '@/utils/date'
 
 const BillDetailPage: React.FC = () => {
   const router = useRouter()
-  const { getBillById, payBill } = useBillStore()
+  const { getBillById, getBillByBookingId, payBill } = useBillStore()
+  const { updateBooking } = useBookingStore()
   const billId = router.params.id as string
+  const bookingId = router.params.bookingId as string
   
-  const bill = useMemo(() => getBillById(billId), [getBillById, billId])
+  const bill = useMemo(() => {
+    if (billId) return getBillById(billId)
+    if (bookingId) return getBillByBookingId(bookingId)
+    return undefined
+  }, [getBillById, getBillByBookingId, billId, bookingId])
+
+  const resolvedBillId = bill?.id || billId
 
   const statusMap: Record<string, { icon: string; text: string }> = {
     unpaid: { icon: '⏳', text: '待支付' },
@@ -25,7 +34,10 @@ const BillDetailPage: React.FC = () => {
       content: `确认支付 ¥${bill?.totalAmount.toFixed(2)} 吗？`,
       success: (res) => {
         if (res.confirm) {
-          payBill(billId)
+          payBill(resolvedBillId)
+          if (bill?.bookingId) {
+            updateBooking(bill.bookingId, { status: 'confirmed' })
+          }
           Taro.showToast({ title: '支付成功', icon: 'success' })
         }
       }

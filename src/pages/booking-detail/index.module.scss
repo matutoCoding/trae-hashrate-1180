@@ -155,3 +155,73 @@
     opacity: 0.8;
   }
 }
+
+.formItem {
+  margin-bottom: $spacing-lg;
+}
+
+.formLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.formInput {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.rinkList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.rinkOption {
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  border: 2rpx solid transparent;
+
+  &Active {
+    border-color: $color-primary;
+    background: rgba($color-primary, 0.05);
+  }
+}
+
+.rinkOptionName {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.sizeGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.sizeChip {
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 2rpx solid transparent;
+
+  &Active {
+    border-color: $color-primary;
+    background: rgba($color-primary, 0.05);
+    color: $color-primary;
+  }
+
+  &:active {
+    opacity: 0.7;
+  }
+}

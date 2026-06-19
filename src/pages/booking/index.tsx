@@ -5,9 +5,11 @@ import classNames from 'classnames'
 import styles from './index.module.scss'
 import { useRinkStore } from '@/store/useRinkStore'
 import { useBookingStore } from '@/store/useBookingStore'
+import type { CycleGenerateResult } from '@/store/useBookingStore'
+import { useBillStore } from '@/store/useBillStore'
 import BookingCard from '@/components/BookingCard'
 import TimeSlotPicker from '@/components/TimeSlotPicker'
-import { getDayName, formatDate, addDays } from '@/utils/date'
+import { getDayName, formatDate, addDays, isValidDateString } from '@/utils/date'
 import type { TimeSlot } from '@/types/rink'
 import type { CycleRule } from '@/types/booking'
 
@@ -15,9 +17,11 @@ const BookingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cycle' | 'list'>('cycle')
   const [showModal, setShowModal] = useState(false)
   const [filter, setFilter] = useState('all')
-  
+  const [lastResult, setLastResult] = useState<CycleGenerateResult | null>(null)
+
   const { rinks } = useRinkStore()
-  const { cycleRules, bookings, addCycleRule, generateBookingsFromCycle } = useBookingStore()
+  const { cycleRules, bookings, addCycleRule } = useBookingStore()
+  const { createBillForBooking } = useBillStore()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -25,13 +29,13 @@ const BookingPage: React.FC = () => {
     timeSlotId: '',
     dayOfWeek: 6,
     startDate: formatDate(new Date(), 'YYYY-MM-DD'),
-    endDate: addDays(new Date(), 60),
+    endDate: addDays(formatDate(new Date(), 'YYYY-MM-DD'), 60),
     skaterName: '',
     skaterPhone: '',
     note: ''
   })
 
-  const selectedRink = useMemo(() => 
+  const selectedRink = useMemo(() =>
     rinks.find(r => r.id === formData.rinkId),
     [rinks, formData.rinkId]
   )
@@ -46,10 +50,12 @@ const BookingPage: React.FC = () => {
 
   const handleAddCycle = () => {
     setShowModal(true)
+    setLastResult(null)
   }
 
   const handleCloseModal = () => {
     setShowModal(false)
+    setLastResult(null)
   }
 
   const handleSelectRink = (rinkId: string) => {
@@ -74,6 +80,21 @@ const BookingPage: React.FC = () => {
       return
     }
 
+    if (!isValidDateString(formData.startDate)) {
+      Taro.showToast({ title: '开始日期格式不正确，应为 YYYY-MM-DD', icon: 'none', duration: 2500 })
+      return
+    }
+
+    if (!isValidDateString(formData.endDate)) {
+      Taro.showToast({ title: '结束日期格式不正确，应为 YYYY-MM-DD', icon: 'none', duration: 2500 })
+      return
+    }
+
+    if (formData.startDate > formData.endDate) {
+      Taro.showToast({ title: '开始日期不能晚于结束日期', icon: 'none', duration: 2500 })
+      return
+    }
+
     const newRule: CycleRule = {
       id: `cycle-${Date.now()}`,
       name: formData.name,
@@ -87,20 +108,45 @@ const BookingPage: React.FC = () => {
       note: formData.note
     }
 
-    const newBookings = addCycleRule(newRule)
-    
-    console.log('[Booking] 创建周期规则并生成预约', { rule: newRule.name, count: newBookings.length })
-    
-    Taro.showToast({ title: `已生成 ${newBookings.length} 条预约`, icon: 'success' })
+    const result = addCycleRule(newRule)
+
+    if (result.bookings.length === 0 && result.skippedDates.length === 0) {
+      Taro.showToast({ title: '所选周期范围内没有可生成的日期', icon: 'none', duration: 2500 })
+      return
+    }
+
+    result.bookings.forEach(booking => {
+      const rink = rinks.find(r => r.id === booking.rinkId)
+      const slot = rink?.timeSlots.find(s => s.id === booking.timeSlotId)
+      const discountResult = {
+        originalPrice: booking.originalPrice,
+        finalPrice: booking.finalPrice,
+        totalDiscount: booking.originalPrice - booking.finalPrice,
+        details: [],
+        hasNegativeProtection: false
+      }
+      createBillForBooking(booking, discountResult)
+    })
+
+    setLastResult(result)
+
+    console.log('[Booking] 创建周期规则并生成预约', {
+      rule: newRule.name,
+      generated: result.bookings.length,
+      skipped: result.skippedDates.length
+    })
+  }
+
+  const handleModalDone = () => {
     setShowModal(false)
-    
+    setLastResult(null)
     setFormData({
       name: '',
       rinkId: '',
       timeSlotId: '',
       dayOfWeek: 6,
       startDate: formatDate(new Date(), 'YYYY-MM-DD'),
-      endDate: addDays(new Date(), 60),
+      endDate: addDays(formatDate(new Date(), 'YYYY-MM-DD'), 60),
       skaterName: '',
       skaterPhone: '',
       note: ''
@@ -225,107 +271,141 @@ const BookingPage: React.FC = () => {
       {showModal && (
         <View className={styles.modal} onClick={handleCloseModal}>
           <View className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <View className={styles.modalHeader}>
-              <Text className={styles.modalTitle}>创建周期预约</Text>
-              <Text className={styles.modalClose} onClick={handleCloseModal}>×</Text>
-            </View>
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>规则名称</Text>
-              <Input
-                className={styles.formInput}
-                placeholder="例如：每周六上午训练"
-                value={formData.name}
-                onInput={e => handleInputChange('name', e.detail.value)}
-              />
-            </View>
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>选择冰场</Text>
-              <View className={styles.rinkPicker}>
-                {rinks.map(rink => (
-                  <View
-                    key={rink.id}
-                    className={classNames(styles.rinkOption, formData.rinkId === rink.id && styles.active)}
-                    onClick={() => handleSelectRink(rink.id)}
-                  >
-                    <Text className={styles.rinkOptionName}>{rink.name}</Text>
-                    <Text className={styles.rinkOptionDesc}>{rink.description}</Text>
+            {lastResult ? (
+              <View>
+                <View className={styles.modalHeader}>
+                  <Text className={styles.modalTitle}>生成结果</Text>
+                  <Text className={styles.modalClose} onClick={handleModalDone}>×</Text>
+                </View>
+                <View className={styles.resultCard}>
+                  <View className={styles.resultRow}>
+                    <Text className={styles.resultLabel}>成功生成</Text>
+                    <Text className={styles.resultValue}>{lastResult.bookings.length} 条预约</Text>
                   </View>
-                ))}
+                  <View className={styles.resultRow}>
+                    <Text className={styles.resultLabel}>同步创建</Text>
+                    <Text className={styles.resultValue}>{lastResult.bookings.length} 笔账单</Text>
+                  </View>
+                  {lastResult.skippedDates.length > 0 && (
+                    <View className={styles.resultSkip}>
+                      <Text className={styles.resultSkipTitle}>
+                        跳过 {lastResult.skippedDates.length} 个日期（时段已被占用）:
+                      </Text>
+                      {lastResult.skippedDates.map(d => (
+                        <Text key={d} className={styles.resultSkipDate}>{d}</Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <View className={classNames(styles.submitBtn)} onClick={handleModalDone}>
+                  知道了
+                </View>
               </View>
-            </View>
+            ) : (
+              <View>
+                <View className={styles.modalHeader}>
+                  <Text className={styles.modalTitle}>创建周期预约</Text>
+                  <Text className={styles.modalClose} onClick={handleCloseModal}>×</Text>
+                </View>
 
-            {selectedRink && (
-              <View className={styles.formItem}>
-                <TimeSlotPicker
-                  slots={selectedRink.timeSlots}
-                  selectedId={formData.timeSlotId}
-                  onSelect={handleSelectTimeSlot}
-                />
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>规则名称</Text>
+                  <Input
+                    className={styles.formInput}
+                    placeholder="例如：每周六上午训练"
+                    value={formData.name}
+                    onInput={e => handleInputChange('name', e.detail.value)}
+                  />
+                </View>
+
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>选择冰场</Text>
+                  <View className={styles.rinkPicker}>
+                    {rinks.map(rink => (
+                      <View
+                        key={rink.id}
+                        className={classNames(styles.rinkOption, formData.rinkId === rink.id && styles.active)}
+                        onClick={() => handleSelectRink(rink.id)}
+                      >
+                        <Text className={styles.rinkOptionName}>{rink.name}</Text>
+                        <Text className={styles.rinkOptionDesc}>{rink.description}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                {selectedRink && (
+                  <View className={styles.formItem}>
+                    <TimeSlotPicker
+                      slots={selectedRink.timeSlots}
+                      selectedId={formData.timeSlotId}
+                      onSelect={handleSelectTimeSlot}
+                    />
+                  </View>
+                )}
+
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>选择星期</Text>
+                  <View className={styles.weekPicker}>
+                    {weekDays.map(day => (
+                      <View
+                        key={day}
+                        className={classNames(styles.weekItem, formData.dayOfWeek === day && styles.active)}
+                        onClick={() => handleSelectDay(day)}
+                      >
+                        {getDayName(day)}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>开始日期</Text>
+                  <Input
+                    className={styles.formInput}
+                    type="text"
+                    placeholder="YYYY-MM-DD"
+                    value={formData.startDate}
+                    onInput={e => handleInputChange('startDate', e.detail.value)}
+                  />
+                </View>
+
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>结束日期</Text>
+                  <Input
+                    className={styles.formInput}
+                    type="text"
+                    placeholder="YYYY-MM-DD"
+                    value={formData.endDate}
+                    onInput={e => handleInputChange('endDate', e.detail.value)}
+                  />
+                </View>
+
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>滑客姓名</Text>
+                  <Input
+                    className={styles.formInput}
+                    placeholder="请输入姓名"
+                    value={formData.skaterName}
+                    onInput={e => handleInputChange('skaterName', e.detail.value)}
+                  />
+                </View>
+
+                <View className={styles.formItem}>
+                  <Text className={styles.formLabel}>联系电话</Text>
+                  <Input
+                    className={styles.formInput}
+                    placeholder="请输入手机号"
+                    value={formData.skaterPhone}
+                    onInput={e => handleInputChange('skaterPhone', e.detail.value)}
+                  />
+                </View>
+
+                <View className={styles.submitBtn} onClick={handleSubmit}>
+                  生成周期预约
+                </View>
               </View>
             )}
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>选择星期</Text>
-              <View className={styles.weekPicker}>
-                {weekDays.map(day => (
-                  <View
-                    key={day}
-                    className={classNames(styles.weekItem, formData.dayOfWeek === day && styles.active)}
-                    onClick={() => handleSelectDay(day)}
-                  >
-                    {getDayName(day)}
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>开始日期</Text>
-              <Input
-                className={styles.formInput}
-                type="text"
-                placeholder="YYYY-MM-DD"
-                value={formData.startDate}
-                onInput={e => handleInputChange('startDate', e.detail.value)}
-              />
-            </View>
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>结束日期</Text>
-              <Input
-                className={styles.formInput}
-                type="text"
-                placeholder="YYYY-MM-DD"
-                value={formData.endDate}
-                onInput={e => handleInputChange('endDate', e.detail.value)}
-              />
-            </View>
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>滑客姓名</Text>
-              <Input
-                className={styles.formInput}
-                placeholder="请输入姓名"
-                value={formData.skaterName}
-                onInput={e => handleInputChange('skaterName', e.detail.value)}
-              />
-            </View>
-
-            <View className={styles.formItem}>
-              <Text className={styles.formLabel}>联系电话</Text>
-              <Input
-                className={styles.formInput}
-                placeholder="请输入手机号"
-                value={formData.skaterPhone}
-                onInput={e => handleInputChange('skaterPhone', e.detail.value)}
-              />
-            </View>
-
-            <View className={styles.submitBtn} onClick={handleSubmit}>
-              生成周期预约
-            </View>
           </View>
         </View>
       )}

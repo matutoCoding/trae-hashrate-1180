@@ -1,5 +1,13 @@
 const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+export function isValidDateString(str: string): boolean {
+  if (!DATE_REGEX.test(str)) return false
+  const d = new Date(str)
+  return !isNaN(d.getTime()) && formatDate(d, 'YYYY-MM-DD') === str
+}
+
 export function formatDate(date: string | Date, format: string = 'YYYY-MM-DD'): string {
   const d = typeof date === 'string' ? new Date(date) : date
   const year = d.getFullYear()
