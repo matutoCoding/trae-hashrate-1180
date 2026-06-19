@@ -4,7 +4,6 @@ import { mockBookings, mockCycleRules } from '@/data/booking'
 import { generateDatesByWeekday, formatDate } from '@/utils/date'
 import { mockRinks } from '@/data/rink'
 import { calculateDiscount } from '@/utils/discount'
-import { mockDiscounts } from '@/data/discount'
 import { loadPersisted, persistData } from '@/utils/persist'
 import { useDiscountStore } from './useDiscountStore'
 
@@ -12,6 +11,36 @@ export interface CycleGenerateResult {
   bookings: Booking[]
   skippedDates: string[]
   skipReason: string
+}
+
+export interface CyclePreviewResult {
+  generatedDates: string[]
+  skippedDates: string[]
+  skippedReasons: Record<string, string>
+}
+
+export function previewCycleRule(rule: CycleRule, existingBookings: Booking[]): CyclePreviewResult {
+  const dates = generateDatesByWeekday(rule.startDate, rule.endDate, rule.dayOfWeek)
+  const generatedDates: string[] = []
+  const skippedDates: string[] = []
+  const skippedReasons: Record<string, string> = {}
+
+  dates.forEach(date => {
+    const occupied = existingBookings.some(b =>
+      b.rinkId === rule.rinkId &&
+      b.date === date &&
+      b.timeSlotId === rule.timeSlotId &&
+      (b.status === 'confirmed' || b.status === 'pending')
+    )
+    if (occupied) {
+      skippedDates.push(date)
+      skippedReasons[date] = '时段已被占用'
+    } else {
+      generatedDates.push(date)
+    }
+  })
+
+  return { generatedDates, skippedDates, skippedReasons }
 }
 
 function computeBookingsFromCycle(rule: CycleRule, existingBookings: Booking[]) {
@@ -78,10 +107,9 @@ interface BookingState {
   updateBooking: (id: string, updates: Partial<Booking>) => void
   deleteBooking: (id: string) => void
   addCycleRule: (rule: CycleRule) => CycleGenerateResult
+  suspendBooking: (id: string) => void
+  resumeBooking: (id: string) => void
   generateBookingsFromCycle: (rule: CycleRule) => CycleGenerateResult
-  getBookingsByDate: (date: string) => Booking[]
-  getBookingsByCycle: (cycleId: string) => Booking[]
-  getBookingById: (id: string) => Booking | undefined
   isSlotOccupied: (rinkId: string, date: string, timeSlotId: string, excludeId?: string) => boolean
 }
 
@@ -157,14 +185,44 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       ? `${skippedDates.length} 个日期因时段已被占用而跳过`
       : ''
 
-    console.log('[Booking] 批量生成预约', {
-      rule: rule.name,
-      generated: bookings.length,
-      skipped: skippedDates.length,
-      skippedDates
-    })
-
     return { bookings, skippedDates, skipReason }
+  },
+
+  suspendBooking: (id: string) => {
+    set(state => {
+      const booking = state.bookings.find(b => b.id === id)
+      if (!booking || booking.status === 'suspended' || booking.status === 'cancelled') return state
+
+      const next = {
+        bookings: state.bookings.map(b =>
+          b.id === id
+            ? { ...b, status: 'suspended' as const, suspendedFromStatus: booking.status as 'pending' | 'confirmed' }
+            : b
+        ),
+        cycleRules: state.cycleRules
+      }
+      persist(next)
+      return next
+    })
+  },
+
+  resumeBooking: (id: string) => {
+    set(state => {
+      const booking = state.bookings.find(b => b.id === id)
+      if (!booking || booking.status !== 'suspended') return state
+
+      const restoreStatus = booking.suspendedFromStatus || 'pending'
+      const next = {
+        bookings: state.bookings.map(b =>
+          b.id === id
+            ? { ...b, status: restoreStatus, suspendedFromStatus: undefined }
+            : b
+        ),
+        cycleRules: state.cycleRules
+      }
+      persist(next)
+      return next
+    })
   },
 
   generateBookingsFromCycle: (rule: CycleRule) => {
@@ -190,25 +248,6 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       ? `${skippedDates.length} 个日期因时段已被占用而跳过`
       : ''
 
-    console.log('[Booking] 批量生成预约', {
-      rule: rule.name,
-      generated: bookings.length,
-      skipped: skippedDates.length,
-      skippedDates
-    })
-
     return { bookings, skippedDates, skipReason }
-  },
-
-  getBookingsByDate: (date: string) => {
-    return get().bookings.filter(b => b.date === date && b.status !== 'cancelled')
-  },
-
-  getBookingsByCycle: (cycleId: string) => {
-    return get().bookings.filter(b => b.cycleRuleId === cycleId)
-  },
-
-  getBookingById: (id: string) => {
-    return get().bookings.find(b => b.id === id)
   }
 }))

@@ -4,8 +4,8 @@ import Taro from '@tarojs/taro'
 import classNames from 'classnames'
 import styles from './index.module.scss'
 import { useRinkStore } from '@/store/useRinkStore'
-import { useBookingStore } from '@/store/useBookingStore'
-import type { CycleGenerateResult } from '@/store/useBookingStore'
+import { useBookingStore, previewCycleRule } from '@/store/useBookingStore'
+import type { CycleGenerateResult, CyclePreviewResult } from '@/store/useBookingStore'
 import { useBillStore } from '@/store/useBillStore'
 import BookingCard from '@/components/BookingCard'
 import TimeSlotPicker from '@/components/TimeSlotPicker'
@@ -13,15 +13,22 @@ import { getDayName, formatDate, addDays, isValidDateString } from '@/utils/date
 import type { TimeSlot } from '@/types/rink'
 import type { CycleRule } from '@/types/booking'
 
+type ModalStep = 'form' | 'preview' | 'result'
+
 const BookingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cycle' | 'list'>('cycle')
   const [showModal, setShowModal] = useState(false)
   const [filter, setFilter] = useState('all')
+  const [modalStep, setModalStep] = useState<ModalStep>('form')
   const [lastResult, setLastResult] = useState<CycleGenerateResult | null>(null)
+  const [previewResult, setPreviewResult] = useState<CyclePreviewResult | null>(null)
+  const [pendingRule, setPendingRule] = useState<CycleRule | null>(null)
 
-  const { rinks } = useRinkStore()
-  const { cycleRules, bookings, addCycleRule } = useBookingStore()
-  const { createBillForBooking } = useBillStore()
+  const rinks = useRinkStore(state => state.rinks)
+  const cycleRules = useBookingStore(state => state.cycleRules)
+  const bookings = useBookingStore(state => state.bookings)
+  const addCycleRule = useBookingStore(state => state.addCycleRule)
+  const createBillForBooking = useBillStore(state => state.createBillForBooking)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -50,12 +57,18 @@ const BookingPage: React.FC = () => {
 
   const handleAddCycle = () => {
     setShowModal(true)
+    setModalStep('form')
     setLastResult(null)
+    setPreviewResult(null)
+    setPendingRule(null)
   }
 
   const handleCloseModal = () => {
     setShowModal(false)
+    setModalStep('form')
     setLastResult(null)
+    setPreviewResult(null)
+    setPendingRule(null)
   }
 
   const handleSelectRink = (rinkId: string) => {
@@ -74,7 +87,7 @@ const BookingPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = () => {
+  const handlePreview = () => {
     if (!formData.name || !formData.rinkId || !formData.timeSlotId || !formData.skaterName) {
       Taro.showToast({ title: '请填写完整信息', icon: 'none' })
       return
@@ -108,12 +121,27 @@ const BookingPage: React.FC = () => {
       note: formData.note
     }
 
-    const result = addCycleRule(newRule)
+    const preview = previewCycleRule(newRule, bookings)
 
-    if (result.bookings.length === 0 && result.skippedDates.length === 0) {
+    if (preview.generatedDates.length === 0 && preview.skippedDates.length === 0) {
       Taro.showToast({ title: '所选周期范围内没有可生成的日期', icon: 'none', duration: 2500 })
       return
     }
+
+    if (preview.generatedDates.length === 0) {
+      Taro.showToast({ title: '所有日期均已被占用，无法生成预约', icon: 'none', duration: 2500 })
+      return
+    }
+
+    setPendingRule(newRule)
+    setPreviewResult(preview)
+    setModalStep('preview')
+  }
+
+  const handleConfirmGenerate = () => {
+    if (!pendingRule) return
+
+    const result = addCycleRule(pendingRule)
 
     result.bookings.forEach(booking => {
       const dr = booking.discountResult || {
@@ -127,17 +155,21 @@ const BookingPage: React.FC = () => {
     })
 
     setLastResult(result)
+    setModalStep('result')
+  }
 
-    console.log('[Booking] 创建周期规则并生成预约', {
-      rule: newRule.name,
-      generated: result.bookings.length,
-      skipped: result.skippedDates.length
-    })
+  const handleBackToForm = () => {
+    setModalStep('form')
+    setPreviewResult(null)
+    setPendingRule(null)
   }
 
   const handleModalDone = () => {
     setShowModal(false)
+    setModalStep('form')
     setLastResult(null)
+    setPreviewResult(null)
+    setPendingRule(null)
     setFormData({
       name: '',
       rinkId: '',
@@ -155,6 +187,7 @@ const BookingPage: React.FC = () => {
     { value: 'all', label: '全部' },
     { value: 'confirmed', label: '已确认' },
     { value: 'pending', label: '待支付' },
+    { value: 'suspended', label: '已暂停' },
     { value: 'completed', label: '已完成' },
     { value: 'cancelled', label: '已取消' }
   ]
@@ -269,7 +302,7 @@ const BookingPage: React.FC = () => {
       {showModal && (
         <View className={styles.modal} onClick={handleCloseModal}>
           <View className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            {lastResult ? (
+            {modalStep === 'result' && lastResult ? (
               <View>
                 <View className={styles.modalHeader}>
                   <Text className={styles.modalTitle}>生成结果</Text>
@@ -297,6 +330,44 @@ const BookingPage: React.FC = () => {
                 </View>
                 <View className={classNames(styles.submitBtn)} onClick={handleModalDone}>
                   知道了
+                </View>
+              </View>
+            ) : modalStep === 'preview' && previewResult ? (
+              <View>
+                <View className={styles.modalHeader}>
+                  <Text className={styles.modalTitle}>生成预览</Text>
+                  <Text className={styles.modalClose} onClick={handleCloseModal}>×</Text>
+                </View>
+                <View className={styles.resultCard}>
+                  <View className={styles.resultRow}>
+                    <Text className={styles.resultLabel}>可生成预约</Text>
+                    <Text className={styles.resultValue}>{previewResult.generatedDates.length} 个日期</Text>
+                  </View>
+                  {previewResult.generatedDates.length > 0 && (
+                    <View className={styles.dateList}>
+                      {previewResult.generatedDates.map(d => (
+                        <Text key={d} className={styles.dateTag}>{d}</Text>
+                      ))}
+                    </View>
+                  )}
+                  {previewResult.skippedDates.length > 0 && (
+                    <View className={styles.resultSkip}>
+                      <Text className={styles.resultSkipTitle}>
+                        将跳过 {previewResult.skippedDates.length} 个日期:
+                      </Text>
+                      {previewResult.skippedDates.map(d => (
+                        <Text key={d} className={styles.resultSkipDate}>{d}</Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <View style={{ display: 'flex', gap: '24rpx' }}>
+                  <View className={classNames(styles.submitBtn, styles.secondaryBtn)} onClick={handleBackToForm}>
+                    返回修改
+                  </View>
+                  <View className={classNames(styles.submitBtn)} onClick={handleConfirmGenerate}>
+                    确认生成
+                  </View>
                 </View>
               </View>
             ) : (
@@ -399,8 +470,8 @@ const BookingPage: React.FC = () => {
                   />
                 </View>
 
-                <View className={styles.submitBtn} onClick={handleSubmit}>
-                  生成周期预约
+                <View className={styles.submitBtn} onClick={handlePreview}>
+                  预览生成结果
                 </View>
               </View>
             )}

@@ -15,9 +15,13 @@ const BookingDetailPage: React.FC = () => {
   const router = useRouter()
   const bookings = useBookingStore(state => state.bookings)
   const updateBooking = useBookingStore(state => state.updateBooking)
+  const suspendBooking = useBookingStore(state => state.suspendBooking)
+  const resumeBooking = useBookingStore(state => state.resumeBooking)
   const rinks = useRinkStore(state => state.rinks)
   const bills = useBillStore(state => state.bills)
   const updateBillByBookingId = useBillStore(state => state.updateBillByBookingId)
+  const suspendBillByBookingId = useBillStore(state => state.suspendBillByBookingId)
+  const resumeBillByBookingId = useBillStore(state => state.resumeBillByBookingId)
   const bookingId = router.params.id as string
 
   const booking = useMemo(() => bookings.find(b => b.id === bookingId), [bookings, bookingId])
@@ -46,9 +50,7 @@ const BookingDetailPage: React.FC = () => {
     setEditing(true)
   }
 
-  const cancelEdit = () => {
-    setEditing(false)
-  }
+  const cancelEdit = () => setEditing(false)
 
   const saveEdit = () => {
     if (!booking) return
@@ -72,10 +74,7 @@ const BookingDetailPage: React.FC = () => {
     }
     if (editData.skateSize) {
       const sizeInfo = mockSkateSizes.find(s => s.size === editData.skateSize)
-      updates.skateRental = {
-        size: editData.skateSize,
-        price: sizeInfo?.rentalPrice || 30
-      }
+      updates.skateRental = { size: editData.skateSize, price: sizeInfo?.rentalPrice || 30 }
     } else {
       updates.skateRental = undefined
     }
@@ -112,6 +111,26 @@ const BookingDetailPage: React.FC = () => {
     })
   }
 
+  const handleSuspend = () => {
+    Taro.showModal({
+      title: '暂停预约',
+      content: '暂停后对应账单将不再待支付，恢复时可重新激活，确定暂停吗？',
+      success: (res) => {
+        if (res.confirm) {
+          suspendBooking(bookingId)
+          suspendBillByBookingId(bookingId)
+          Taro.showToast({ title: '已暂停', icon: 'success' })
+        }
+      }
+    })
+  }
+
+  const handleResume = () => {
+    resumeBooking(bookingId)
+    resumeBillByBookingId(bookingId)
+    Taro.showToast({ title: '已恢复', icon: 'success' })
+  }
+
   const handlePay = () => {
     Taro.navigateTo({ url: `/pages/bill-detail/index?bookingId=${bookingId}` })
   }
@@ -128,15 +147,23 @@ const BookingDetailPage: React.FC = () => {
     pending: { icon: '💰', text: '待支付', desc: '请尽快完成支付以确认预约' },
     confirmed: { icon: '✅', text: '已确认', desc: '预约已确认，请准时到场' },
     cancelled: { icon: '❌', text: '已取消', desc: '预约已取消' },
-    completed: { icon: '🎉', text: '已完成', desc: '本次滑冰已完成' }
+    completed: { icon: '🎉', text: '已完成', desc: '本次滑冰已完成' },
+    suspended: { icon: '⏸️', text: '已暂停', desc: '预约已暂停，可随时恢复' }
   }
   const status = statusMap[booking.status]
 
   const billStatusMap: Record<string, { icon: string; text: string }> = {
     unpaid: { icon: '⏳', text: '待支付' },
     paid: { icon: '✅', text: '已支付' },
-    refunded: { icon: '↩️', text: '已退款' }
+    refunded: { icon: '↩️', text: '已退款' },
+    suspended: { icon: '⏸️', text: '已暂停' }
   }
+
+  const skateRentalFee = booking.skateRental?.price || 0
+  const discountTotal = booking.originalPrice - booking.finalPrice
+  const totalPayable = booking.finalPrice + skateRentalFee
+
+  const discountDetails = booking.discountResult?.details || []
 
   const editRink = rinks.find(r => r.id === editData.rinkId)
 
@@ -147,7 +174,6 @@ const BookingDetailPage: React.FC = () => {
           <View className={styles.content}>
             <View className={styles.infoCard}>
               <Text className={styles.cardTitle}>修改预约</Text>
-
               <View className={styles.formItem}>
                 <Text className={styles.formLabel}>日期</Text>
                 <Input
@@ -158,7 +184,6 @@ const BookingDetailPage: React.FC = () => {
                   onInput={e => setEditData(prev => ({ ...prev, date: e.detail.value }))}
                 />
               </View>
-
               <View className={styles.formItem}>
                 <Text className={styles.formLabel}>选择冰场</Text>
                 <View className={styles.rinkList}>
@@ -173,7 +198,6 @@ const BookingDetailPage: React.FC = () => {
                   ))}
                 </View>
               </View>
-
               {editRink && (
                 <View className={styles.formItem}>
                   <Text className={styles.formLabel}>选择时段</Text>
@@ -184,7 +208,6 @@ const BookingDetailPage: React.FC = () => {
                   />
                 </View>
               )}
-
               <View className={styles.formItem}>
                 <Text className={styles.formLabel}>联系电话</Text>
                 <Input
@@ -195,7 +218,6 @@ const BookingDetailPage: React.FC = () => {
                   onInput={e => setEditData(prev => ({ ...prev, skaterPhone: e.detail.value }))}
                 />
               </View>
-
               <View className={styles.formItem}>
                 <Text className={styles.formLabel}>冰刀租借尺码（留空则不租借）</Text>
                 <View className={styles.sizeGrid}>
@@ -219,7 +241,6 @@ const BookingDetailPage: React.FC = () => {
             </View>
           </View>
         </ScrollView>
-
         <View className={styles.footer}>
           <View className={classNames(styles.btn, styles.secondary)} onClick={cancelEdit}>取消</View>
           <View className={classNames(styles.btn, styles.primary)} onClick={saveEdit}>保存</View>
@@ -254,14 +275,50 @@ const BookingDetailPage: React.FC = () => {
               <Text className={styles.infoLabel}>时段</Text>
               <Text className={styles.infoValue}>{booking.timeSlotLabel}</Text>
             </View>
-            {booking.skateRental && (
-              <View className={styles.skateInfo}>
-                <Text className={styles.skateLabel}>冰刀租借</Text>
-                <Text className={styles.skateSize}>
-                  {booking.skateRental.size}码 · ¥{booking.skateRental.price}
+          </View>
+
+          <View className={styles.infoCard}>
+            <Text className={styles.cardTitle}>费用明细</Text>
+            <View className={styles.infoRow}>
+              <Text className={styles.infoLabel}>滑冰费用</Text>
+              <Text className={styles.infoValue}>¥{booking.originalPrice.toFixed(2)}</Text>
+            </View>
+            {skateRentalFee > 0 && (
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>冰刀租借</Text>
+                <Text className={styles.infoValue}>¥{skateRentalFee.toFixed(2)}</Text>
+              </View>
+            )}
+            {discountTotal > 0 && discountDetails.length > 0 && (
+              <View className={styles.discountSection}>
+                <View className={styles.infoRow} style={{ marginBottom: '12rpx' }}>
+                  <Text className={styles.infoLabel}>优惠明细</Text>
+                  <Text className={styles.infoValue} style={{ color: '#ef4444' }}>
+                    -¥{discountTotal.toFixed(2)}
+                  </Text>
+                </View>
+                {discountDetails.map((detail, index) => (
+                  <View key={detail.discountId} className={styles.discountStep}>
+                    <Text className={styles.stepName}>
+                      {index + 1}. {detail.discountName}
+                    </Text>
+                    <Text className={styles.stepAmount}>-¥{detail.discountAmount.toFixed(2)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            {discountTotal > 0 && discountDetails.length === 0 && (
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>优惠</Text>
+                <Text className={styles.infoValue} style={{ color: '#ef4444' }}>
+                  -¥{discountTotal.toFixed(2)}
                 </Text>
               </View>
             )}
+            <View className={styles.totalRow}>
+              <Text className={styles.totalLabel}>应付金额</Text>
+              <Text className={styles.totalValue}>¥{totalPayable.toFixed(2)}</Text>
+            </View>
           </View>
 
           <View className={styles.infoCard}>
@@ -275,35 +332,6 @@ const BookingDetailPage: React.FC = () => {
               <Text className={styles.infoValue}>{booking.skaterPhone}</Text>
             </View>
           </View>
-
-          <View className={styles.infoCard}>
-            <Text className={styles.cardTitle}>费用信息</Text>
-            <View className={styles.infoRow}>
-              <Text className={styles.infoLabel}>原价</Text>
-              <Text className={styles.infoValue}>¥{booking.originalPrice.toFixed(2)}</Text>
-            </View>
-            {booking.originalPrice !== booking.finalPrice && (
-              <View className={styles.infoRow}>
-                <Text className={styles.infoLabel}>优惠</Text>
-                <Text className={styles.infoValue} style={{ color: '#ef4444' }}>
-                  -¥{(booking.originalPrice - booking.finalPrice).toFixed(2)}
-                </Text>
-              </View>
-            )}
-            <View className={styles.infoRow}>
-              <Text className={styles.infoLabel}>实付</Text>
-              <Text className={classNames(styles.infoValue, styles.infoValueHighlight)}>
-                ¥{booking.finalPrice.toFixed(2)}
-              </Text>
-            </View>
-          </View>
-
-          {booking.note && (
-            <View className={styles.infoCard}>
-              <Text className={styles.cardTitle}>备注</Text>
-              <Text className={styles.note}>{booking.note}</Text>
-            </View>
-          )}
 
           {bill && (
             <View className={styles.infoCard}>
@@ -328,6 +356,13 @@ const BookingDetailPage: React.FC = () => {
               </View>
             </View>
           )}
+
+          {booking.note && (
+            <View className={styles.infoCard}>
+              <Text className={styles.cardTitle}>备注</Text>
+              <Text className={styles.note}>{booking.note}</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -337,8 +372,11 @@ const BookingDetailPage: React.FC = () => {
             <View className={classNames(styles.btn, styles.danger)} onClick={handleCancel}>
               取消预约
             </View>
+            <View className={classNames(styles.btn, styles.warning)} onClick={handleSuspend}>
+              暂停
+            </View>
             <View className={classNames(styles.btn, styles.primary)} onClick={startEdit}>
-              修改预约
+              修改
             </View>
           </>
         )}
@@ -347,8 +385,21 @@ const BookingDetailPage: React.FC = () => {
             <View className={classNames(styles.btn, styles.secondary)} onClick={handleCancel}>
               取消
             </View>
+            <View className={classNames(styles.btn, styles.warning)} onClick={handleSuspend}>
+              暂停
+            </View>
             <View className={classNames(styles.btn, styles.primary)} onClick={handlePay}>
               去支付
+            </View>
+          </>
+        )}
+        {booking.status === 'suspended' && (
+          <>
+            <View className={classNames(styles.btn, styles.danger)} onClick={handleCancel}>
+              取消预约
+            </View>
+            <View className={classNames(styles.btn, styles.primary)} onClick={handleResume}>
+              恢复预约
             </View>
           </>
         )}

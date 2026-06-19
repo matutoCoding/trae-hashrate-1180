@@ -17,7 +17,8 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onClick, showStatus 
     pending: { label: '待支付', className: styles.statusPending },
     confirmed: { label: '已确认', className: styles.statusConfirmed },
     cancelled: { label: '已取消', className: styles.statusCancelled },
-    completed: { label: '已完成', className: styles.statusCompleted }
+    completed: { label: '已完成', className: styles.statusCompleted },
+    suspended: { label: '已暂停', className: styles.statusSuspended }
   }
 
   const status = statusMap[booking.status]

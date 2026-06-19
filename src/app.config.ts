@@ -7,7 +7,8 @@ export default defineAppConfig({
     'pages/rink-detail/index',
     'pages/booking-detail/index',
     'pages/bill-detail/index',
-    'pages/skate-rental/index'
+    'pages/skate-rental/index',
+    'pages/pay-result/index'
   ],
   window: {
     backgroundTextStyle: 'light',

@@ -9,7 +9,7 @@ export interface Bill {
   discountResult: DiscountCalculationResult
   skateRentalFee: number
   totalAmount: number
-  status: 'unpaid' | 'paid' | 'refunded'
+  status: 'unpaid' | 'paid' | 'refunded' | 'suspended'
   payTime?: string
   createTime: string
 }

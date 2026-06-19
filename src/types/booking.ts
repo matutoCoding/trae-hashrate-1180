@@ -28,7 +28,8 @@ export interface Booking {
   discountResult?: DiscountCalculationResult
   skaterName: string
   skaterPhone: string
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'suspended'
+  suspendedFromStatus?: 'pending' | 'confirmed'
   skateRental?: {
     size: string
     price: number

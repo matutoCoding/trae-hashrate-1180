@@ -8,29 +8,16 @@ import { loadPersisted, persistData } from '@/utils/persist'
 
 interface BillState {
   bills: Bill[]
-  getBillById: (id: string) => Bill | undefined
-  getBillByBookingId: (bookingId: string) => Bill | undefined
-  getBillsByStatus: (status: Bill['status']) => Bill[]
   addBill: (bill: Bill) => void
   createBillForBooking: (booking: Booking, discountResult: DiscountCalculationResult) => Bill
   payBill: (id: string) => void
   updateBillByBookingId: (bookingId: string, updates: Partial<Bill>) => void
+  suspendBillByBookingId: (bookingId: string) => void
+  resumeBillByBookingId: (bookingId: string) => void
 }
 
 export const useBillStore = create<BillState>((set, get) => ({
   bills: loadPersisted<Bill[]>('bills', mockBills),
-
-  getBillById: (id: string) => {
-    return get().bills.find(b => b.id === id)
-  },
-
-  getBillByBookingId: (bookingId: string) => {
-    return get().bills.find(b => b.bookingId === bookingId)
-  },
-
-  getBillsByStatus: (status: Bill['status']) => {
-    return get().bills.filter(b => b.status === status)
-  },
 
   addBill: (bill: Bill) => {
     set(state => {
@@ -68,7 +55,6 @@ export const useBillStore = create<BillState>((set, get) => ({
       return { bills: next }
     })
 
-    console.log('[Bill] 创建账单', { billId: bill.id, totalAmount: bill.totalAmount })
     return bill
   },
 
@@ -88,6 +74,30 @@ export const useBillStore = create<BillState>((set, get) => ({
     set(state => {
       const next = state.bills.map(b =>
         b.bookingId === bookingId ? { ...b, ...updates } : b
+      )
+      persistData('bills', next)
+      return { bills: next }
+    })
+  },
+
+  suspendBillByBookingId: (bookingId: string) => {
+    set(state => {
+      const next = state.bills.map(b =>
+        b.bookingId === bookingId && b.status === 'unpaid'
+          ? { ...b, status: 'suspended' as const }
+          : b
+      )
+      persistData('bills', next)
+      return { bills: next }
+    })
+  },
+
+  resumeBillByBookingId: (bookingId: string) => {
+    set(state => {
+      const next = state.bills.map(b =>
+        b.bookingId === bookingId && b.status === 'suspended'
+          ? { ...b, status: 'unpaid' as const }
+          : b
       )
       persistData('bills', next)
       return { bills: next }

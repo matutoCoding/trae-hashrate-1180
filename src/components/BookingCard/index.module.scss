@@ -59,6 +59,11 @@
   color: $color-primary;
 }
 
+.statusSuspended {
+  background: rgba($color-warning, 0.1);
+  color: #b45309;
+}
+
 .timeSection {
   display: flex;
   align-items: center;

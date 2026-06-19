@@ -25,21 +25,24 @@ const BillDetailPage: React.FC = () => {
   const statusMap: Record<string, { icon: string; text: string }> = {
     unpaid: { icon: '⏳', text: '待支付' },
     paid: { icon: '✅', text: '已支付' },
-    refunded: { icon: '↩️', text: '已退款' }
+    refunded: { icon: '↩️', text: '已退款' },
+    suspended: { icon: '⏸️', text: '已暂停' }
   }
 
   const handlePay = () => {
     if (!bill || bill.status !== 'unpaid') return
     Taro.showModal({
       title: '确认支付',
-      content: `确认支付 ¥${bill?.totalAmount.toFixed(2)} 吗？`,
+      content: `确认支付 ¥${bill.totalAmount.toFixed(2)} 吗？`,
       success: (res) => {
         if (res.confirm) {
           payBill(resolvedBillId)
-          if (bill?.bookingId) {
+          if (bill.bookingId) {
             updateBooking(bill.bookingId, { status: 'confirmed' })
           }
-          Taro.showToast({ title: '支付成功，预约已确认', icon: 'success', duration: 2000 })
+          Taro.redirectTo({
+            url: `/pages/pay-result/index?billId=${resolvedBillId}&bookingId=${bill.bookingId || ''}`
+          })
         }
       }
     })
@@ -117,28 +120,24 @@ const BillDetailPage: React.FC = () => {
               <Text className={styles.infoValue}>¥{bill.originalAmount.toFixed(2)}</Text>
             </View>
 
-            <View className={styles.discountSection}>
-              <View className={styles.infoRow} style={{ marginBottom: '16rpx' }}>
-                <Text className={styles.infoLabel}>优惠明细</Text>
-                <Text className={styles.infoValue} style={{ color: '#ef4444' }}>
-                  -¥{bill.discountResult.totalDiscount.toFixed(2)}
-                </Text>
-              </View>
-              {bill.discountResult.details.map((detail, index) => (
-                <View key={detail.discountId} className={styles.discountStep}>
-                  <Text className={styles.stepName}>
-                    {index + 1}. {detail.discountName}
+            {bill.discountResult.totalDiscount > 0 && bill.discountResult.details.length > 0 && (
+              <View className={styles.discountSection}>
+                <View className={styles.infoRow} style={{ marginBottom: '16rpx' }}>
+                  <Text className={styles.infoLabel}>优惠明细</Text>
+                  <Text className={styles.infoValue} style={{ color: '#ef4444' }}>
+                    -¥{bill.discountResult.totalDiscount.toFixed(2)}
                   </Text>
-                  <Text className={styles.stepAmount}>-¥{detail.discountAmount.toFixed(2)}</Text>
                 </View>
-              ))}
-              {bill.discountResult.details.length === 0 && (
-                <View className={styles.discountStep}>
-                  <Text className={styles.stepName}>无优惠</Text>
-                  <Text className={styles.stepAmount}>-¥0.00</Text>
-                </View>
-              )}
-            </View>
+                {bill.discountResult.details.map((detail, index) => (
+                  <View key={detail.discountId} className={styles.discountStep}>
+                    <Text className={styles.stepName}>
+                      {index + 1}. {detail.discountName}
+                    </Text>
+                    <Text className={styles.stepAmount}>-¥{detail.discountAmount.toFixed(2)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
             <View className={styles.totalRow}>
               <Text className={styles.totalLabel}>实付金额</Text>
@@ -186,8 +185,18 @@ const BillDetailPage: React.FC = () => {
             </View>
           </>
         )}
-        {bill.status !== 'unpaid' && (
+        {bill.status === 'suspended' && (
+          <View className={classNames(styles.btn, styles.secondary)} onClick={() => Taro.navigateBack()}>
+            返回
+          </View>
+        )}
+        {bill.status === 'paid' && (
           <View className={classNames(styles.btn, styles.primary)} onClick={() => Taro.navigateBack()}>
+            返回
+          </View>
+        )}
+        {bill.status === 'refunded' && (
+          <View className={classNames(styles.btn, styles.secondary)} onClick={() => Taro.navigateBack()}>
             返回
           </View>
         )}

@@ -1,0 +1,122 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 200rpx;
+}
+
+.content {
+  padding: $page-padding;
+}
+
+.successHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 0 60rpx;
+}
+
+.successIcon {
+  font-size: 120rpx;
+}
+
+.successTitle {
+  font-size: $font-size-xxl;
+  font-weight: bold;
+  color: $color-text-primary;
+  margin-top: 24rpx;
+}
+
+.successAmount {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: $color-price;
+  margin-top: 16rpx;
+}
+
+.infoCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+}
+
+.cardTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $spacing-md;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 0;
+  font-size: $font-size-sm;
+}
+
+.infoLabel {
+  color: $color-text-secondary;
+}
+
+.infoValue {
+  color: $color-text-primary;
+}
+
+.discountValue {
+  color: #ef4444;
+}
+
+.highlightValue {
+  color: $color-price;
+  font-weight: $font-weight-semibold;
+}
+
+.emptyPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 0;
+  color: $color-text-tertiary;
+  font-size: $font-size-md;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(#{$spacing-md} + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  box-shadow: $shadow-float;
+  display: flex;
+  gap: $spacing-md;
+}
+
+.btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: $radius-button;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.primary {
+  background: $color-primary;
+  color: $color-text-white;
+}
+
+.secondary {
+  background: $color-bg-page;
+  color: $color-text-secondary;
+}

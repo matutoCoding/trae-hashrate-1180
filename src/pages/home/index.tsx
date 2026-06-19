@@ -21,7 +21,8 @@ const HomePage: React.FC = () => {
   const stats = useMemo(() => {
     const confirmed = bookings.filter(b => b.status === 'confirmed').length
     const pending = bookings.filter(b => b.status === 'pending').length
-    return { confirmed, pending, total: bookings.length }
+    const suspended = bookings.filter(b => b.status === 'suspended').length
+    return { confirmed, pending, suspended, total: bookings.length }
   }, [bookings])
 
   const quickEntries = [
@@ -60,6 +61,10 @@ const HomePage: React.FC = () => {
           <View className={styles.statItem}>
             <Text className={styles.statValue}>{stats.pending}</Text>
             <Text className={styles.statLabel}>待支付</Text>
+          </View>
+          <View className={styles.statItem}>
+            <Text className={styles.statValue}>{stats.suspended}</Text>
+            <Text className={styles.statLabel}>已暂停</Text>
           </View>
         </View>
       </View>

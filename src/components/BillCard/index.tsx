@@ -14,7 +14,8 @@ const BillCard: React.FC<BillCardProps> = ({ bill, onClick }) => {
   const statusMap: Record<string, { label: string; className: string }> = {
     unpaid: { label: '待支付', className: styles.statusUnpaid },
     paid: { label: '已支付', className: styles.statusPaid },
-    refunded: { label: '已退款', className: styles.statusRefunded }
+    refunded: { label: '已退款', className: styles.statusRefunded },
+    suspended: { label: '已暂停', className: styles.statusSuspended }
   }
 
   const status = statusMap[bill.status]

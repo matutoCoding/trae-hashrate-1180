@@ -378,3 +378,24 @@
   background: rgba($color-warning, 0.1);
   border-radius: $radius-sm;
 }
+
+.dateList {
+  margin-top: $spacing-sm;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+}
+
+.dateTag {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  padding: 4rpx 12rpx;
+  background: rgba($color-primary, 0.1);
+  border-radius: $radius-sm;
+  display: inline-block;
+}
+
+.secondaryBtn {
+  background: $color-bg-page !important;
+  color: $color-text-secondary !important;
+}

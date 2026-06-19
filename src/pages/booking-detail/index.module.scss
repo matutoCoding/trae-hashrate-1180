@@ -151,6 +151,11 @@
     color: $color-error;
   }
 
+  &.warning {
+    background: rgba($color-warning, 0.1);
+    color: $color-warning;
+  }
+
   &:active {
     opacity: 0.8;
   }
@@ -239,4 +244,50 @@
   &:active {
     opacity: 0.7;
   }
+}
+
+.discountSection {
+  margin-top: $spacing-sm;
+  padding: $spacing-md;
+  background: rgba(#ef4444, 0.03);
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+}
+
+.discountStep {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6rpx 0;
+}
+
+.stepName {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.stepAmount {
+  font-size: $font-size-xs;
+  color: #ef4444;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-md;
+  margin-top: $spacing-sm;
+  border-top: 1rpx solid $color-divider;
+}
+
+.totalLabel {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.totalValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-price;
 }

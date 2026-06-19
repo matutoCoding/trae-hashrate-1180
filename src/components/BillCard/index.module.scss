@@ -50,6 +50,11 @@
   color: $color-text-tertiary;
 }
 
+.statusSuspended {
+  background: rgba($color-warning, 0.1);
+  color: #b45309;
+}
+
 .info {
   margin-bottom: $spacing-md;
 }
