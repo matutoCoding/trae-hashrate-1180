@@ -13,6 +13,59 @@ export interface CycleGenerateResult {
   skipReason: string
 }
 
+function computeBookingsFromCycle(rule: CycleRule, existingBookings: Booking[]) {
+  const dates = generateDatesByWeekday(rule.startDate, rule.endDate, rule.dayOfWeek)
+  const rink = mockRinks.find(r => r.id === rule.rinkId)
+  const timeSlot = rink?.timeSlots.find(s => s.id === rule.timeSlotId)
+
+  const computedBookings: Booking[] = []
+  const skippedDates: string[] = []
+
+  dates.forEach((date, index) => {
+    const isOccupied = existingBookings.some(b =>
+      b.rinkId === rule.rinkId &&
+      b.date === date &&
+      b.timeSlotId === rule.timeSlotId &&
+      (b.status === 'confirmed' || b.status === 'pending')
+    ) || computedBookings.some(b => b.date === date)
+
+    if (isOccupied) {
+      skippedDates.push(date)
+      return
+    }
+
+    const originalPrice = timeSlot?.price || 0
+    const discountResult = calculateDiscount(
+      originalPrice,
+      mockDiscounts,
+      mockDiscountOrderConfig.order,
+      mockDiscountOrderConfig.allowNegative
+    )
+
+    computedBookings.push({
+      id: `bk-${rule.id}-${index + 1}`,
+      cycleRuleId: rule.id,
+      rinkId: rule.rinkId,
+      rinkName: rink?.name || '冰场',
+      timeSlotId: rule.timeSlotId,
+      timeSlotLabel: timeSlot ? `${timeSlot.startTime}-${timeSlot.endTime}` : '',
+      date,
+      startTime: timeSlot?.startTime || '',
+      endTime: timeSlot?.endTime || '',
+      originalPrice,
+      finalPrice: discountResult.finalPrice,
+      discountResult,
+      skaterName: rule.skaterName,
+      skaterPhone: rule.skaterPhone,
+      status: 'pending' as const,
+      note: rule.note,
+      createdAt: formatDate(new Date(), 'YYYY-MM-DD HH:mm:ss')
+    })
+  })
+
+  return { bookings: computedBookings, skippedDates, computedBookings }
+}
+
 interface BookingState {
   bookings: Booking[]
   cycleRules: CycleRule[]
@@ -77,67 +130,51 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   },
 
   addCycleRule: (rule: CycleRule) => {
-    set(state => {
-      const nextCycleRules = [...state.cycleRules, rule]
-      persist({ bookings: state.bookings, cycleRules: nextCycleRules })
-      return { ...state, cycleRules: nextCycleRules }
-    })
-    return get().generateBookingsFromCycle(rule)
-  },
+    const { bookings, skippedDates, computedBookings } = computeBookingsFromCycle(
+      rule,
+      get().bookings
+    )
 
-  generateBookingsFromCycle: (rule: CycleRule) => {
-    const dates = generateDatesByWeekday(rule.startDate, rule.endDate, rule.dayOfWeek)
-    const rink = mockRinks.find(r => r.id === rule.rinkId)
-    const timeSlot = rink?.timeSlots.find(s => s.id === rule.timeSlotId)
-
-    const existingBookings = get().bookings
-    const newBookings: Booking[] = []
-    const skippedDates: string[] = []
-
-    dates.forEach((date, index) => {
-      const isOccupied = existingBookings.some(b =>
-        b.rinkId === rule.rinkId &&
-        b.date === date &&
-        b.timeSlotId === rule.timeSlotId &&
-        (b.status === 'confirmed' || b.status === 'pending')
-      ) || newBookings.some(b => b.date === date)
-
-      if (isOccupied) {
-        skippedDates.push(date)
-        return
-      }
-
-      const originalPrice = timeSlot?.price || 0
-      const discountResult = calculateDiscount(
-        originalPrice,
-        mockDiscounts,
-        mockDiscountOrderConfig.order,
-        mockDiscountOrderConfig.allowNegative
-      )
-
-      newBookings.push({
-        id: `bk-${rule.id}-${index + 1}`,
-        cycleRuleId: rule.id,
-        rinkId: rule.rinkId,
-        rinkName: rink?.name || '冰场',
-        timeSlotId: rule.timeSlotId,
-        timeSlotLabel: timeSlot ? `${timeSlot.startTime}-${timeSlot.endTime}` : '',
-        date,
-        startTime: timeSlot?.startTime || '',
-        endTime: timeSlot?.endTime || '',
-        originalPrice,
-        finalPrice: discountResult.finalPrice,
-        skaterName: rule.skaterName,
-        skaterPhone: rule.skaterPhone,
-        status: 'confirmed' as const,
-        note: rule.note,
-        createdAt: formatDate(new Date(), 'YYYY-MM-DD HH:mm:ss')
-      })
-    })
+    if (bookings.length === 0 && skippedDates.length === 0) {
+      return { bookings: [], skippedDates: [], skipReason: '' }
+    }
 
     set(state => {
       const next = {
-        bookings: [...state.bookings, ...newBookings],
+        bookings: [...state.bookings, ...computedBookings],
+        cycleRules: [...state.cycleRules, rule]
+      }
+      persist(next)
+      return next
+    })
+
+    const skipReason = skippedDates.length > 0
+      ? `${skippedDates.length} 个日期因时段已被占用而跳过`
+      : ''
+
+    console.log('[Booking] 批量生成预约', {
+      rule: rule.name,
+      generated: bookings.length,
+      skipped: skippedDates.length,
+      skippedDates
+    })
+
+    return { bookings, skippedDates, skipReason }
+  },
+
+  generateBookingsFromCycle: (rule: CycleRule) => {
+    const { bookings, skippedDates, computedBookings } = computeBookingsFromCycle(
+      rule,
+      get().bookings
+    )
+
+    if (bookings.length === 0 && skippedDates.length === 0) {
+      return { bookings: [], skippedDates: [], skipReason: '' }
+    }
+
+    set(state => {
+      const next = {
+        bookings: [...state.bookings, ...computedBookings],
         cycleRules: state.cycleRules
       }
       persist(next)
@@ -150,12 +187,12 @@ export const useBookingStore = create<BookingState>((set, get) => ({
 
     console.log('[Booking] 批量生成预约', {
       rule: rule.name,
-      generated: newBookings.length,
+      generated: bookings.length,
       skipped: skippedDates.length,
       skippedDates
     })
 
-    return { bookings: newBookings, skippedDates, skipReason }
+    return { bookings, skippedDates, skipReason }
   },
 
   getBookingsByDate: (date: string) => {

@@ -116,16 +116,14 @@ const BookingPage: React.FC = () => {
     }
 
     result.bookings.forEach(booking => {
-      const rink = rinks.find(r => r.id === booking.rinkId)
-      const slot = rink?.timeSlots.find(s => s.id === booking.timeSlotId)
-      const discountResult = {
+      const dr = booking.discountResult || {
         originalPrice: booking.originalPrice,
         finalPrice: booking.finalPrice,
         totalDiscount: booking.originalPrice - booking.finalPrice,
         details: [],
         hasNegativeProtection: false
       }
-      createBillForBooking(booking, discountResult)
+      createBillForBooking(booking, dr)
     })
 
     setLastResult(result)

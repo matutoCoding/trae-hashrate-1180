@@ -1,3 +1,5 @@
+import type { DiscountCalculationResult } from './discount'
+
 export interface CycleRule {
   id: string
   name: string
@@ -23,6 +25,7 @@ export interface Booking {
   endTime: string
   originalPrice: number
   finalPrice: number
+  discountResult?: DiscountCalculationResult
   skaterName: string
   skaterPhone: string
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'

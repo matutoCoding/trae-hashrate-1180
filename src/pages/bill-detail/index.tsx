@@ -38,7 +38,7 @@ const BillDetailPage: React.FC = () => {
           if (bill?.bookingId) {
             updateBooking(bill.bookingId, { status: 'confirmed' })
           }
-          Taro.showToast({ title: '支付成功', icon: 'success' })
+          Taro.showToast({ title: '支付成功，预约已确认', icon: 'success', duration: 2000 })
         }
       }
     })
@@ -82,6 +82,14 @@ const BillDetailPage: React.FC = () => {
               <Text className={styles.infoLabel}>滑客</Text>
               <Text className={styles.infoValue}>{bill.bookingInfo.skaterName}</Text>
             </View>
+            {bill.bookingId && (
+              <View
+                className={styles.linkBtn}
+                onClick={() => Taro.redirectTo({ url: `/pages/booking-detail/index?id=${bill.bookingId}` })}
+              >
+                查看预约详情 →
+              </View>
+            )}
           </View>
 
           <View className={styles.infoCard}>

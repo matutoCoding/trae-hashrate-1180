@@ -15,10 +15,11 @@ const BookingDetailPage: React.FC = () => {
   const router = useRouter()
   const { getBookingById, updateBooking } = useBookingStore()
   const { rinks } = useRinkStore()
-  const { updateBillByBookingId } = useBillStore()
+  const { updateBillByBookingId, getBillByBookingId } = useBillStore()
   const bookingId = router.params.id as string
 
   const booking = useMemo(() => getBookingById(bookingId), [getBookingById, bookingId])
+  const bill = useMemo(() => getBillByBookingId(bookingId), [getBillByBookingId, bookingId])
 
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({
@@ -122,12 +123,18 @@ const BookingDetailPage: React.FC = () => {
   }
 
   const statusMap: Record<string, { icon: string; text: string; desc: string }> = {
-    pending: { icon: '⏳', text: '待确认', desc: '预约正在等待确认' },
+    pending: { icon: '💰', text: '待支付', desc: '请尽快完成支付以确认预约' },
     confirmed: { icon: '✅', text: '已确认', desc: '预约已确认，请准时到场' },
     cancelled: { icon: '❌', text: '已取消', desc: '预约已取消' },
     completed: { icon: '🎉', text: '已完成', desc: '本次滑冰已完成' }
   }
   const status = statusMap[booking.status]
+
+  const billStatusMap: Record<string, { icon: string; text: string }> = {
+    unpaid: { icon: '⏳', text: '待支付' },
+    paid: { icon: '✅', text: '已支付' },
+    refunded: { icon: '↩️', text: '已退款' }
+  }
 
   const editRink = rinks.find(r => r.id === editData.rinkId)
 
@@ -293,6 +300,30 @@ const BookingDetailPage: React.FC = () => {
             <View className={styles.infoCard}>
               <Text className={styles.cardTitle}>备注</Text>
               <Text className={styles.note}>{booking.note}</Text>
+            </View>
+          )}
+
+          {bill && (
+            <View className={styles.infoCard}>
+              <Text className={styles.cardTitle}>账单信息</Text>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>支付状态</Text>
+                <Text className={styles.infoValue}>
+                  {billStatusMap[bill.status].icon} {billStatusMap[bill.status].text}
+                </Text>
+              </View>
+              <View className={styles.infoRow}>
+                <Text className={styles.infoLabel}>应付金额</Text>
+                <Text className={classNames(styles.infoValue, styles.infoValueHighlight)}>
+                  ¥{bill.totalAmount.toFixed(2)}
+                </Text>
+              </View>
+              <View
+                className={styles.linkBtn}
+                onClick={() => Taro.navigateTo({ url: `/pages/bill-detail/index?bookingId=${bookingId}` })}
+              >
+                查看账单详情 →
+              </View>
             </View>
           )}
         </View>
