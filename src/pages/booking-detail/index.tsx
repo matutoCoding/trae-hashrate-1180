@@ -13,13 +13,15 @@ import type { TimeSlot } from '@/types/rink'
 
 const BookingDetailPage: React.FC = () => {
   const router = useRouter()
-  const { getBookingById, updateBooking } = useBookingStore()
-  const { rinks } = useRinkStore()
-  const { updateBillByBookingId, getBillByBookingId } = useBillStore()
+  const bookings = useBookingStore(state => state.bookings)
+  const updateBooking = useBookingStore(state => state.updateBooking)
+  const rinks = useRinkStore(state => state.rinks)
+  const bills = useBillStore(state => state.bills)
+  const updateBillByBookingId = useBillStore(state => state.updateBillByBookingId)
   const bookingId = router.params.id as string
 
-  const booking = useMemo(() => getBookingById(bookingId), [getBookingById, bookingId])
-  const bill = useMemo(() => getBillByBookingId(bookingId), [getBillByBookingId, bookingId])
+  const booking = useMemo(() => bookings.find(b => b.id === bookingId), [bookings, bookingId])
+  const bill = useMemo(() => bills.find(b => b.bookingId === bookingId), [bills, bookingId])
 
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({

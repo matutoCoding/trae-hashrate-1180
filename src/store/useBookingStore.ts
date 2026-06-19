@@ -4,8 +4,9 @@ import { mockBookings, mockCycleRules } from '@/data/booking'
 import { generateDatesByWeekday, formatDate } from '@/utils/date'
 import { mockRinks } from '@/data/rink'
 import { calculateDiscount } from '@/utils/discount'
-import { mockDiscounts, mockDiscountOrderConfig } from '@/data/discount'
+import { mockDiscounts } from '@/data/discount'
 import { loadPersisted, persistData } from '@/utils/persist'
+import { useDiscountStore } from './useDiscountStore'
 
 export interface CycleGenerateResult {
   bookings: Booking[]
@@ -17,6 +18,10 @@ function computeBookingsFromCycle(rule: CycleRule, existingBookings: Booking[]) 
   const dates = generateDatesByWeekday(rule.startDate, rule.endDate, rule.dayOfWeek)
   const rink = mockRinks.find(r => r.id === rule.rinkId)
   const timeSlot = rink?.timeSlots.find(s => s.id === rule.timeSlotId)
+
+  const discountState = useDiscountStore.getState()
+  const { order, allowNegative } = discountState.orderConfig
+  const availableDiscounts = discountState.discounts
 
   const computedBookings: Booking[] = []
   const skippedDates: string[] = []
@@ -37,9 +42,9 @@ function computeBookingsFromCycle(rule: CycleRule, existingBookings: Booking[]) 
     const originalPrice = timeSlot?.price || 0
     const discountResult = calculateDiscount(
       originalPrice,
-      mockDiscounts,
-      mockDiscountOrderConfig.order,
-      mockDiscountOrderConfig.allowNegative
+      availableDiscounts,
+      order,
+      allowNegative
     )
 
     computedBookings.push({

@@ -7,9 +7,10 @@ import { useBillStore } from '@/store/useBillStore'
 import { useDiscountStore } from '@/store/useDiscountStore'
 
 const MinePage: React.FC = () => {
-  const { bookings, cycleRules } = useBookingStore()
-  const { bills } = useBillStore()
-  const { discounts } = useDiscountStore()
+  const bookings = useBookingStore(state => state.bookings)
+  const cycleRules = useBookingStore(state => state.cycleRules)
+  const bills = useBillStore(state => state.bills)
+  const discounts = useDiscountStore(state => state.discounts)
 
   const stats = useMemo(() => {
     const totalBookings = bookings.filter(b => b.status !== 'cancelled').length

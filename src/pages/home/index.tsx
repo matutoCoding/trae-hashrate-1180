@@ -9,11 +9,14 @@ import BookingCard from '@/components/BookingCard'
 import { formatDate } from '@/utils/date'
 
 const HomePage: React.FC = () => {
-  const { rinks } = useRinkStore()
-  const { bookings, getBookingsByDate } = useBookingStore()
+  const rinks = useRinkStore(state => state.rinks)
+  const bookings = useBookingStore(state => state.bookings)
 
   const today = formatDate(new Date(), 'YYYY-MM-DD')
-  const todayBookings = useMemo(() => getBookingsByDate(today), [getBookingsByDate, today])
+  const todayBookings = useMemo(
+    () => bookings.filter(b => b.date === today && b.status !== 'cancelled'),
+    [bookings, today]
+  )
   
   const stats = useMemo(() => {
     const confirmed = bookings.filter(b => b.status === 'confirmed').length
@@ -56,7 +59,7 @@ const HomePage: React.FC = () => {
           </View>
           <View className={styles.statItem}>
             <Text className={styles.statValue}>{stats.pending}</Text>
-            <Text className={styles.statLabel}>待确认</Text>
+            <Text className={styles.statLabel}>待支付</Text>
           </View>
         </View>
       </View>

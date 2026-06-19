@@ -14,7 +14,7 @@ interface BookingCardProps {
 
 const BookingCard: React.FC<BookingCardProps> = ({ booking, onClick, showStatus = true }) => {
   const statusMap: Record<string, { label: string; className: string }> = {
-    pending: { label: '待确认', className: styles.statusPending },
+    pending: { label: '待支付', className: styles.statusPending },
     confirmed: { label: '已确认', className: styles.statusConfirmed },
     cancelled: { label: '已取消', className: styles.statusCancelled },
     completed: { label: '已完成', className: styles.statusCompleted }

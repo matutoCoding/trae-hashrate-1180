@@ -154,7 +154,7 @@ const BookingPage: React.FC = () => {
   const filterOptions = [
     { value: 'all', label: '全部' },
     { value: 'confirmed', label: '已确认' },
-    { value: 'pending', label: '待确认' },
+    { value: 'pending', label: '待支付' },
     { value: 'completed', label: '已完成' },
     { value: 'cancelled', label: '已取消' }
   ]

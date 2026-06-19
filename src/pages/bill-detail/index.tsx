@@ -5,20 +5,20 @@ import classNames from 'classnames'
 import styles from './index.module.scss'
 import { useBillStore } from '@/store/useBillStore'
 import { useBookingStore } from '@/store/useBookingStore'
-import { formatDateTime } from '@/utils/date'
 
 const BillDetailPage: React.FC = () => {
   const router = useRouter()
-  const { getBillById, getBillByBookingId, payBill } = useBillStore()
-  const { updateBooking } = useBookingStore()
+  const payBill = useBillStore(state => state.payBill)
+  const bills = useBillStore(state => state.bills)
+  const updateBooking = useBookingStore(state => state.updateBooking)
   const billId = router.params.id as string
   const bookingId = router.params.bookingId as string
-  
+
   const bill = useMemo(() => {
-    if (billId) return getBillById(billId)
-    if (bookingId) return getBillByBookingId(bookingId)
+    if (billId) return bills.find(b => b.id === billId)
+    if (bookingId) return bills.find(b => b.bookingId === bookingId)
     return undefined
-  }, [getBillById, getBillByBookingId, billId, bookingId])
+  }, [bills, billId, bookingId])
 
   const resolvedBillId = bill?.id || billId
 
@@ -29,6 +29,7 @@ const BillDetailPage: React.FC = () => {
   }
 
   const handlePay = () => {
+    if (!bill || bill.status !== 'unpaid') return
     Taro.showModal({
       title: '确认支付',
       content: `确认支付 ¥${bill?.totalAmount.toFixed(2)} 吗？`,

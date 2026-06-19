@@ -60,24 +60,28 @@ export function calculateDiscount(
     
     if (stepPrice < 0 && !allowNegative) {
       const adjustedDiscount = currentPrice
-      details.push({
-        discountId: discount.id,
-        discountName: discount.name,
-        discountAmount: adjustedDiscount,
-        stepPrice: 0
-      })
+      if (adjustedDiscount > 0) {
+        details.push({
+          discountId: discount.id,
+          discountName: discount.name,
+          discountAmount: adjustedDiscount,
+          stepPrice: 0
+        })
+      }
       currentPrice = 0
       hasNegativeProtection = true
       console.log('[Discount] 负值兜底触发', { discount: discount.name, adjustedTo: 0 })
       break
     }
     
-    details.push({
-      discountId: discount.id,
-      discountName: discount.name,
-      discountAmount,
-      stepPrice
-    })
+    if (discountAmount > 0) {
+      details.push({
+        discountId: discount.id,
+        discountName: discount.name,
+        discountAmount,
+        stepPrice
+      })
+    }
     currentPrice = stepPrice
   }
   
